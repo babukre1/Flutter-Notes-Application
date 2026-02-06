@@ -53,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } on DioException catch (e) {
-      // print(e.response);
       String errorMsg = e.response?.data['msg'] ?? "Authentication failed";
       _showError(errorMsg);
     } finally {
