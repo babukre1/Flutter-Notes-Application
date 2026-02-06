@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:notes_application/api_client.dart';
 import 'package:notes_application/login.dart';
-import 'package:notes_application/note_item.dart';
 
 void main() async {
   // Add async here
@@ -13,7 +12,7 @@ void main() async {
 
     runApp(const NotesApp());
   } catch (e) {
-    print("CRITICAL BOOT ERROR: $e");
+    // print("CRITICAL BOOT ERROR: $e");
     // Still run the app so you can at least see a blank screen or error
     runApp(
       const MaterialApp(
@@ -42,4 +41,3 @@ class NotesApp extends StatelessWidget {
     );
   }
 }
-

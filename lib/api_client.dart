@@ -30,6 +30,5 @@ class ApiClient {
     ));
     
     _isInitialized = true;
-    print("API Client: Cookie Manager attached.");
   }
 }
