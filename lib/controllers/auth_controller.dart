@@ -19,6 +19,7 @@ class AuthController {
     } on DioException catch (e) {
       // Qabo qaladka ka imaanaya server-ka soona bandhig fariinta
       String errorMsg = e.response?.data['msg'] ?? "Authentication failed";
+      // soo daabac kusoo bandhig hadii ertor dhaci
       throw Exception(errorMsg);
     }
   }
