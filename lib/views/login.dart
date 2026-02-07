@@ -1,70 +1,65 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:notes_application/login.dart';
-import 'api_client.dart'; // Ensure your ApiClient class is accessible
+import 'package:notes_application/views/notes_dashboard.dart';
+import 'package:notes_application/views/signup.dart';
+import 'package:notes_application/controllers/auth_controller.dart';
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
-  final TextEditingController _fullNameController = TextEditingController();
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
-  // --- INTEGRATION: Signup Logic ---
-  Future<void> _handleSignup() async {
-    if (_fullNameController.text.isEmpty ||
-        _usernameController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
-      _showToast("Please fill in all fields", isError: true);
+  final AuthController _authController = AuthController();
+
+  // --- INTEGRATION: Login Logic ---
+  Future<void> _handleLogin() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError("Please fill in all fields");
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // POST /api/auth/signup
-      final response = await ApiClient.dio.post(
-        "/auth//signup",
-        data: {
-          "username": _usernameController.text, // Mapped from Email input
-          "fullname": _fullNameController.text,
-          "password": _passwordController.text,
-        },
+      await _authController.login(
+        _usernameController.text,
+        _passwordController.text,
       );
 
-      print(_fullNameController.text);
-      print(_passwordController.text);
+      // CRITICAL FIX: Always check if the widget is still in the tree
+      if (!mounted) return;
 
-      if (response.statusCode == 200) {
-        _showToast("Account created! Please login.");
-        if (mounted) {
-          // Navigate back to Login
-          Navigator.pop(context);
-        }
-        print(response.data);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Welcome back!")));
+
+      // FIX: Clear the navigation stack so they can't "Go Back" to login
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const NotesDashboard()),
+        (route) => false,
+      );
+    } catch (e) {
+      // FIX: Check mounted before showing an error snackbar
+      if (mounted) {
+        String errorMsg = e.toString().replaceAll("Exception: ", "");
+        _showError(errorMsg);
       }
-    } on DioException catch (e) {
-      print(e);
-      String errorMsg = e.response?.data['msg'] ?? "Registration failed";
-      _showToast(errorMsg, isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showToast(String message, {bool isError = false}) {
+  void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
     );
   }
 
@@ -73,25 +68,23 @@ class _SignupScreenState extends State<SignupScreen> {
     const primaryColor = Color(0xFF137FEC);
     const textMain = Color(0xFF111827);
     const textSecondary = Color(0xFF4B5563);
+    const inputBorder = Color(0xFFE5E7EB);
 
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Header with Back Button
+              // Header
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: textMain),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                    const Icon(Icons.edit_note, color: primaryColor, size: 40),
                     Expanded(
                       child: Center(
                         child: Text(
-                          "Create Account",
+                          "Notes App",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -100,18 +93,16 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(
-                      width: 48,
-                    ), // Spacer to balance the back button
+                    const SizedBox(width: 40), // Balance for centering
                   ],
                 ),
               ),
 
-              // Hero Section (Matches Login)
+              // Card Illustration Area
               Container(
                 margin: const EdgeInsets.all(16),
                 width: double.infinity,
-                height: 160,
+                height: 180,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF0F7FF),
                   borderRadius: BorderRadius.circular(12),
@@ -119,11 +110,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 padding: const EdgeInsets.all(24),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      "Join us",
+                      "Welcome back",
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -131,50 +122,45 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     Text(
-                      "Start organizing your thoughts today",
+                      "Capture your thoughts effortlessly",
                       style: TextStyle(fontSize: 14, color: textSecondary),
                     ),
                   ],
                 ),
               ),
 
-              // Signup Form
+              // Inputs
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLabel("Full Name"),
-                    _buildTextField(
-                      controller: _fullNameController,
-                      hint: "Enter your full name",
-                      icon: Icons.person_outline,
-                    ),
-                    const SizedBox(height: 16),
                     _buildLabel("Username"),
                     _buildTextField(
                       controller: _usernameController,
-                      hint: "Choose a username",
-                      icon: Icons.alternate_email,
+                      hint: "Enter your Username",
+                      keyboardType: TextInputType.name,
                     ),
                     const SizedBox(height: 16),
                     _buildLabel("Password"),
-                    _buildPasswordField(),
+                    _buildPasswordField(inputBorder),
                   ],
                 ),
               ),
 
-              // Action Button
+              // Sign In Button
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleSignup,
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: primaryColor.withOpacity(0.4),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -182,7 +168,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
-                            "Create Account",
+                            "Sign In",
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -192,28 +178,35 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
 
-              // Login Redirect
+              // Footer Actions
+              TextButton(
+                onPressed: () {},
+                child: const Text(
+                  "Forgot password?",
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text(
-                    "Already have an account?",
+                    "Don't have an account?",
                     style: TextStyle(color: textSecondary),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                    ),
-                    child: const Text(
-                      "Sign In",
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SignupScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text("Sign Up"),
                   ),
                 ],
               ),
@@ -224,14 +217,12 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // --- REUSABLE UI COMPONENTS ---
-
   Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -239,13 +230,14 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
-    required IconData icon,
+    TextInputType? keyboardType,
   }) {
     return TextField(
       controller: controller,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Colors.grey, size: 20),
         hintText: hint,
+        hintStyle: const TextStyle(color: Colors.grey),
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.all(15),
@@ -255,23 +247,22 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF137FEC)),
+          borderSide: const BorderSide(color: Color(0xFF137FEC), width: 2),
         ),
       ),
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField(Color borderColor) {
     return TextField(
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
       decoration: InputDecoration(
-        prefixIcon: const Icon(
-          Icons.lock_outline,
-          color: Colors.grey,
-          size: 20,
-        ),
-        hintText: "Create a password",
+        hintText: "Enter your password",
+        hintStyle: const TextStyle(color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.all(15),
         suffixIcon: IconButton(
           icon: Icon(
             _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
@@ -280,15 +271,13 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () =>
               setState(() => _isPasswordVisible = !_isPasswordVisible),
         ),
-        filled: true,
-        fillColor: Colors.white,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF137FEC)),
+          borderSide: const BorderSide(color: Color(0xFF137FEC), width: 2),
         ),
       ),
     );

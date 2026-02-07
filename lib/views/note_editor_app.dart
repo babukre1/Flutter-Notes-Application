@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:notes_application/api_client.dart';
-import 'package:notes_application/note_item.dart';
+import 'package:notes_application/services/api_client.dart';
+import 'package:notes_application/models/note_item.dart';
 
 class NoteEditorScreen extends StatefulWidget {
   final NoteItem? note; // If null, we are creating a new note
@@ -106,6 +106,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         debugPrint("Dio error response: ${e.response?.data}");
       }
       ScaffoldMessenger.of(
+        // ignore: use_build_context_synchronously
         context,
       ).showSnackBar(const SnackBar(content: Text("Failed to save note")));
     } finally {
@@ -117,18 +118,50 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Future<void> _deleteNote() async {
     if (widget.note == null) return;
 
-    try {
-      await ApiClient.dio.delete("/notes/${widget.note!.id}");
-      if (mounted) {
-        if (widget.onNoteUpdated != null) {
-          widget.onNoteUpdated!();
+    // Show confirmation dialog first
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Delete Note"),
+          content: const Text("Are you sure you want to delete this note?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), // User cancelled
+              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true), // User confirmed
+              child: const Text(
+                "Delete",
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user clicked "Delete" (true), proceed with the API call
+    if (confirm == true) {
+      try {
+        await ApiClient.dio.delete("/notes/${widget.note!.id}");
+        if (mounted) {
+          if (widget.onNoteUpdated != null) {
+            widget.onNoteUpdated!();
+          }
+          Navigator.pop(context); // Go back to dashboard
         }
-        Navigator.pop(context);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to delete note")),
+          );
+        }
       }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Failed to delete note")));
     }
   }
 
@@ -240,6 +273,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'unique',
         onPressed: _isSaving ? null : _saveNote,
         backgroundColor: primaryBlue,
         icon: _isSaving

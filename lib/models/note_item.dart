@@ -3,8 +3,7 @@ class NoteItem {
   final String title;
   final String content;
   final String date;
-  final bool favourite; // Must be here!
-
+  final bool favourite;
   NoteItem({
     required this.id,
     required this.title,
@@ -17,7 +16,7 @@ class NoteItem {
     return NoteItem(
       id: json['id'].toString(),
       title: json['title'] ?? "",
-      content: json['body'] ?? "", // Map 'body' from DB to 'content' in Flutter
+      content: json['body'] ?? "", 
       date: json['updated_at'] ?? "",
       // This is the critical line:
       favourite: json['favourite'] == 1 || json['favourite'] == true,

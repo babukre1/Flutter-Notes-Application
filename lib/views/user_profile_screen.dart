@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:notes_application/api_client.dart';
+import 'package:notes_application/services/api_client.dart';
+import 'package:notes_application/views/login.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -26,19 +27,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // --- GET CURRENT PROFILE DATA ---
   Future<void> _fetchUserProfile() async {
     try {
-      // Assuming GET /api/auth/me or similar returns current user
-      final response = await ApiClient.dio.get("/api/auth/me"); 
+      // This request relies on your session cookie being sent automatically by Dio
+      final response = await ApiClient.dio.get("/auth/me");
       final data = response.data;
 
-      setState(() {
-        _fullNameController.text = data['fullname'] ?? "";
-        _userNameController.text = data['username'] ?? "";
-        _phoneController.text = data['phone_number'] ?? "";
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          // Assigning values to .text pre-fills the TextFields
+          _fullNameController.text = data['fullname'] ?? "";
+          _userNameController.text = data['username'] ?? "";
+          _phoneController.text = data['phone_number'] ?? "";
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint("Error fetching profile: $e");
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Could not load user data from session"),
+          ),
+        );
+      }
     }
   }
 
@@ -80,6 +91,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      await ApiClient.dio.post("/api/auth/logout");
+      ApiClient.cookieJar.deleteAll();
+
+      // THIS IS THE FIX: Check if the widget is still in the tree
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false, // This wipes the entire history
+      );
+    } catch (e) {
+      debugPrint("Logout error: $e");
+
+      // Check mounted again here before the catch-block navigation
+      if (!mounted) return;
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF137FEC);
@@ -112,7 +150,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 children: [
                   Text(
                     _fullNameController.text,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Text(
                     "@${_userNameController.text}",
@@ -124,10 +165,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 32),
 
             // The three main input fields
-            _buildInputField("Full Name", _fullNameController, hint: "Enter your full name"),
-            _buildInputField("Username", _userNameController, hint: "Enter username"),
-            _buildInputField("Phone Number", _phoneController, 
-                keyboardType: TextInputType.phone, hint: "Enter phone number"),
+            _buildInputField("Full Name", _fullNameController, hint: "Enter"),
+            _buildInputField(
+              "Username",
+              _userNameController,
+              hint: "Enter your Username",
+            ),
+            _buildInputField(
+              "Phone Number",
+              _phoneController,
+              keyboardType: TextInputType.phone,
+              hint: "Enter you Phone Number",
+            ),
 
             const SizedBox(height: 40),
 
@@ -139,18 +188,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onPressed: _isSaving ? null : _updateProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryBlue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
                 child: _isSaving
                     ? const SizedBox(
-                        height: 20, 
-                        width: 20, 
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
                     : const Text(
                         "Save Changes",
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
               ),
             ),
@@ -160,10 +218,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             // Log Out (Logic can be added later)
             Center(
               child: TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  _handleLogout(); // Execute logout
+                },
                 child: const Text(
                   "Log Out",
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -173,8 +237,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller, 
-      {TextInputType? keyboardType, String? hint}) {
+  Widget _buildInputField(
+    String label,
+    TextEditingController controller, {
+    TextInputType? keyboardType,
+    String? hint,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -182,7 +250,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text(
             label,
-            style: const TextStyle(color: Color(0xFF4A5568), fontSize: 15, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Color(0xFF4A5568),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
@@ -192,7 +264,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               hintText: hint,
               filled: true,
               fillColor: const Color(0xFFF9FAFB),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -203,7 +278,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF137FEC), width: 2),
+                borderSide: const BorderSide(
+                  color: Color(0xFF137FEC),
+                  width: 2,
+                ),
               ),
             ),
           ),

@@ -1,25 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:notes_application/api_client.dart';
-import 'package:notes_application/login.dart';
+import 'package:flutter/rendering.dart';
+import 'package:notes_application/services/api_client.dart';
+import 'package:notes_application/views/login.dart';
 
 void main() async {
   // Add async here
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
+  debugProfileBuildsEnabled = true;
+  debugProfilePaintsEnabled = true;
 
-    // Initialize ApiClient
-    ApiClient.init();
-
-    runApp(const NotesApp());
-  } catch (e) {
-    // print("CRITICAL BOOT ERROR: $e");
-    // Still run the app so you can at least see a blank screen or error
-    runApp(
-      const MaterialApp(
-        home: Scaffold(body: Center(child: Text("App failed to start"))),
-      ),
-    );
-  }
+  ApiClient.init();
+  runApp(const NotesApp());
 }
 
 class NotesApp extends StatelessWidget {

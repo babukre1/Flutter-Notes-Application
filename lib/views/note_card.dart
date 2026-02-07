@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes_application/note_item.dart';
+import 'package:notes_application/models/note_item.dart';
 
 class NoteCard extends StatelessWidget {
   final NoteItem note;
