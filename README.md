@@ -1,5 +1,12 @@
 # Notes Application
 
+## group member
+1. abubakar ali abdulle
+2. adullahi ali abdullahi
+3. abas abirahman yusuf
+4. nuradin farah adan
+5. mohamed abdisalam ahmed
+
 A Flutter project refactored into a **Model-View-Controller (MVC)** architecture.
 
 ## Architecture Overview
